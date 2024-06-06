@@ -1,0 +1,48 @@
+services:
+  telegram-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - BOT_USERNAME=${BOT_USERNAME}
+    depends_on:
+      - fluentd
+    restart: on-failure
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.0.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.transport.ssl.enabled=false
+    ports:
+      - 9200:9200
+      - 9300:9300
+    restart: on-failure
+
+  fluentd:
+    build:
+      context: ./fluentd
+      dockerfile: Dockerfile
+    volumes:
+      - ./fluentd/conf:/fluentd/etc
+      - ./logs:/logs
+    ports:
+      - 24224:24224
+      - 5140:5140
+    depends_on:
+      - elasticsearch
+    restart: on-failure
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.0.0
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    ports:
+      - 5601:5601
+    depends_on:
+      - elasticsearch
+    restart: on-failure
